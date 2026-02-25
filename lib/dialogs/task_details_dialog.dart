@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import '../models/task_model.dart';
 import '../controllers/task_controller.dart';
 
@@ -8,10 +9,10 @@ class TaskDetailsDialog extends StatefulWidget {
   final TaskController controller;
 
   const TaskDetailsDialog({
-    Key? key,
+    super.key,
     required this.task,
     required this.controller,
-  }) : super(key: key);
+  });
 
   static void show(Task task, TaskController controller) {
     Get.dialog(
@@ -68,15 +69,15 @@ class _TaskDetailsDialogState extends State<TaskDetailsDialog>
           child: Container(
             width: MediaQuery.of(context).size.width * 0.85,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 52, 52, 54).withOpacity(0.98),
+              color: const Color.fromARGB(255, 52, 52, 54).withValues(alpha: 0.98),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   blurRadius: 32,
                   offset: const Offset(0, 16),
                 ),
@@ -84,13 +85,24 @@ class _TaskDetailsDialogState extends State<TaskDetailsDialog>
             ),
             child: Padding(
                 padding: const EdgeInsets.all(28),
-                child: Column(
+                child: Obx(() {
+                  // Always get the latest task state from controller
+                  final currentTask = widget.controller.getTaskById(widget.task.id!);
+                  
+                  // If task not found, show error
+                  if (currentTask == null) {
+                    return const Center(
+                      child: Text('Task not found', style: TextStyle(color: Colors.white)),
+                    );
+                  }
+                  
+                  return Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Title
                     Text(
-                      widget.task.title,
+                      currentTask.title,
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
@@ -101,7 +113,7 @@ class _TaskDetailsDialogState extends State<TaskDetailsDialog>
                     const SizedBox(height: 20),
 
                     // Description (if exists)
-                    if (widget.task.description.isNotEmpty) ...[
+                    if (currentTask.description.isNotEmpty) ...[
                       Text(
                         'Description',
                         style: TextStyle(
@@ -116,18 +128,18 @@ class _TaskDetailsDialogState extends State<TaskDetailsDialog>
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             width: 1,
                           ),
                         ),
                         child: Text(
-                          widget.task.description,
+                          currentTask.description,
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.white.withOpacity(0.85),
+                            color: Colors.white.withValues(alpha: 0.85),
                             fontWeight: FontWeight.w500,
                             height: 1.6,
                           ),
@@ -152,14 +164,14 @@ class _TaskDetailsDialogState extends State<TaskDetailsDialog>
                               'Created',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.white.withOpacity(0.6),
+                                color: Colors.white.withValues(alpha: 0.6),
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.5,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${widget.task.createdAt.toString().split('.')[0]}',
+                              currentTask.createdAt.toString().split('.')[0],
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.white,
@@ -170,6 +182,43 @@ class _TaskDetailsDialogState extends State<TaskDetailsDialog>
                         ),
                       ],
                     ),
+                    // dateCompleted: shows when task was marked complete (if completed)
+                    if (currentTask.dateCompleted != null) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Text(
+                            '✅',
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Completed',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.green.withValues(alpha: 0.7),
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat('yyyy-MM-dd HH:mm').format(currentTask.dateCompleted!),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.green.withValues(alpha: 0.9),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ] else
+                      const SizedBox(height: 16),
                     const SizedBox(height: 16),
 
                     // Close Button - Bottom
@@ -187,7 +236,8 @@ class _TaskDetailsDialogState extends State<TaskDetailsDialog>
                       ),
                     ),
                   ],
-                ),
+                );
+                }),
               ),
           ),
         ),

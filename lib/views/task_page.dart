@@ -5,6 +5,7 @@ import '../dialogs/add_task_dialog.dart';
 import '../dialogs/delete_all_dialog.dart';
 import '../widgets/task_card.dart';
 import '../widgets/empty_state_widget.dart';
+import '../models/task_model.dart';
 
 class TaskPage extends StatefulWidget {
   const TaskPage({Key? key}) : super(key: key);
@@ -14,140 +15,299 @@ class TaskPage extends StatefulWidget {
 }
 
 class _TaskPageState extends State<TaskPage> {
-  final TaskController controller = Get.put(TaskController());
+  late TaskController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.put(TaskController());
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      backgroundColor: Colors.black,
+      body: Column(
         children: [
-          // Background Image
-          Container(
+          const SizedBox(height: 28),
+              
+          // Tab Bar for Pending and Completed
+          Obx(() => Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('lib/assets/peace.jpg'),
-                fit: BoxFit.cover,
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1,
               ),
             ),
-          ),
-          
-          // Dark overlay for better text visibility
-          Container(
-            color: Colors.black.withOpacity(0.3),
-          ),
-
-          // Main content
-          Column(
-            children: [
-              // Top right delete all button
-              Padding(
-                padding: const EdgeInsets.only(right: 20, top: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (controller.tasks.isNotEmpty)
-                      GestureDetector(
-                        onTap: () => DeleteAllDialog.show(controller),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.3),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.red.withOpacity(0.6),
-                              width: 1.5,
+            child: Row(
+              children: [
+                // Pending Tab
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      controller.selectedTab.value = 'Pending';
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: controller.selectedTab.value == 'Pending'
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.assignment,
+                            color: controller.selectedTab.value == 'Pending'
+                                ? Colors.amber
+                                : Colors.white.withOpacity(0.6),
+                            size: 20,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Pending',
+                            style: TextStyle(
+                              color: controller.selectedTab.value == 'Pending'
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.6),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          child: Icon(
-                            Icons.delete_outline,
-                            color: Colors.red.withOpacity(0.8),
-                            size: 22,
+                          const SizedBox(height: 2),
+                          Obx(
+                            () => Text(
+                              '${controller.getPendingCount()}',
+                              style: TextStyle(
+                                color: controller.selectedTab.value == 'Pending'
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.5),
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                  ],
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
+                // Completed Tab
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      controller.selectedTab.value = 'Completed';
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: controller.selectedTab.value == 'Completed'
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: controller.selectedTab.value == 'Completed'
+                                ? Colors.green
+                                : Colors.white.withOpacity(0.6),
+                            size: 20,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Completed',
+                            style: TextStyle(
+                              color: controller.selectedTab.value == 'Completed'
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.6),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Obx(
+                            () => Text(
+                              '${controller.getCompletedCount()}',
+                              style: TextStyle(
+                                color: controller.selectedTab.value == 'Completed'
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.5),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            )),
+              const SizedBox(height: 12),
               Expanded(
                 child: Obx(() {
                   if (controller.isLoading.value) {
                     return const Center(
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: Color.fromARGB(66, 61, 58, 58),
                         strokeWidth: 3,
                       ),
                     );
                   }
 
-                  if (controller.tasks.isEmpty) {
-                    return const EmptyStateWidget();
+                  final filteredTasks = controller.getFilteredTasks();
+                  if (filteredTasks.isEmpty) {
+                    return EmptyStateWidget(
+                      message: controller.selectedTab.value == 'Completed'
+                          ? 'No completed tasks yet'
+                          : 'No tasks yet',
+                      subtitle: controller.selectedTab.value == 'Completed'
+                          ? 'Complete some tasks to see them here'
+                          : 'Tap the + button to add your first task',
+                    );
                   }
 
-                  return _buildTasksList();
+                  return _buildTasksList(filteredTasks);
                 }),
               ),
             ],
           ),
-        ],
-      ),
       floatingActionButton: _buildFAB(),
     );
   }
 
-  Widget _buildTasksList() {
-    return Obx(() => SingleChildScrollView(
+  Widget _buildTasksList(List<Task> tasks) {
+    return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         children: [
-          // Stats badge - Long press to delete all
-          GestureDetector(
-            onLongPress: controller.tasks.isNotEmpty
-                ? () => DeleteAllDialog.show(controller)
-                : null,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.4),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 12,
-                    offset: const Offset(4, 4),
+          // Stats badge with Refresh and Delete icons
+          Obx(() {
+            final completed = controller.getCompletedCount();
+            final total = controller.getTaskCount();
+            
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Refresh Icon (Left, Always visible)
+                Tooltip(
+                  message: 'Refresh tasks',
+                  child: GestureDetector(
+                    onTap: () => controller.fetchTasks(),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.3),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.6),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.refresh,
+                        color: Colors.blue.withValues(alpha: 0.8),
+                        size: 18,
+                      ),
+                    ),
                   ),
-                ],
-              ),
-              child: Obx(() => Text(
-                '${controller.getCompletedCount()} of ${controller.getTaskCount()} done!',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
                 ),
-              )),
-            ),
-          ),
+                const SizedBox(width: 12),
+                // Stats badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.4),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: const Offset(4, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '$completed of $total done!',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Trash Icon (Right, For current tab)
+                Obx(() => Visibility(
+                  visible: (controller.selectedTab.value == 'Completed' &&
+                      controller.getCompletedCount() > 0) ||
+                      (controller.selectedTab.value == 'Pending' &&
+                          controller.getPendingCount() > 0),
+                  child: Tooltip(
+                    message: controller.selectedTab.value == 'Completed'
+                        ? 'Delete all completed tasks'
+                        : 'Delete all pending tasks',
+                    child: GestureDetector(
+                      onTap: () {
+                        if (controller.selectedTab.value == 'Completed') {
+                          DeleteAllDialog.showCompletedOnly(controller);
+                        } else {
+                          DeleteAllDialog.showPendingOnly(controller);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.3),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.red.withValues(alpha: 0.6),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.delete_outline,
+                          color: Colors.red.withValues(alpha: 0.8),
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                )),
+              ],
+            );
+          }),
           const SizedBox(height: 20),
           // Tasks list
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: controller.tasks.length,
+            itemCount: tasks.length,
             itemBuilder: (context, index) {
-              final task = controller.tasks[index];
-              return TaskCard(task: task, controller: controller);
+              final task = tasks[index];
+              return TaskCard(
+                key: ValueKey(task.id),
+                task: task,
+                controller: controller,
+              );
             },
           ),
         ],
       ),
-    ));
+    );
   }
 
   Widget _buildFAB() {
@@ -169,7 +329,7 @@ class _TaskPageState extends State<TaskPage> {
             ),
           ],
         ),
-        child: const Icon(Icons.add, size: 32, color: Color(0xFF6366F1)),
+        child: const Icon(Icons.add, size: 32, color: Color.fromARGB(255, 2, 2, 2)),
       ),
     );
   }

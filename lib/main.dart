@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'views/task_page.dart';
+import 'views/splash_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'Task Manager',
       theme: _buildTheme(),
-      home: const TaskPage(),
+      home: const SplashPage(),
       debugShowCheckedModeBanner: false,
     );
   }

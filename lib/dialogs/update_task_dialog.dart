@@ -8,28 +8,41 @@ import '../widgets/styled_dialog_container.dart';
 import '../widgets/date_time_picker_field.dart';
 import '../widgets/priority_dropdown.dart';
 
-class AddTaskDialog {
-  static void show(TaskController controller) {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final assignedToController = TextEditingController();
+class UpdateTaskDialog {
+  static void show(Task task, TaskController controller) {
+    // 🔒 Lock: prevent editing completed tasks
+    if (task.status == 'Completed') {
+      Get.snackbar(
+        '🔒 Task Locked',
+        'Cannot edit completed tasks',
+        backgroundColor: Colors.orange.withValues(alpha: 0.3),
+        colorText: Colors.white,
+        isDismissible: true,
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    final titleController = TextEditingController(text: task.title);
+    final descriptionController = TextEditingController(text: task.description);
+    final assignedToController = TextEditingController(text: task.assignedTo ?? '');
     
-    DateTime? selectedDueDate;
-    String? selectedDueTime;
-    String selectedPriority = 'Medium';
+    DateTime? selectedDueDate = task.dueDate;
+    String? selectedDueTime = task.dueTime;
+    String selectedPriority = task.priority ?? 'Medium';
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setState) {
           return StyledDialogContainer(
-            title: '🚀 Create New Task',
+            title: '✏️ Update Task',
             content: SingleChildScrollView(
               child: Column(
                 children: [
                   const SizedBox(height: 16),
                   StyledTextField(
                     controller: titleController,
-                    hintText: 'What\'s your next adventure? 🚀',
+                    hintText: 'Task title',
                     prefixIcon: Icons.title,
                   ),
                   const SizedBox(height: 16),
@@ -71,7 +84,7 @@ class AddTaskDialog {
                               colorScheme: const ColorScheme.dark(
                                 primary: Colors.white,
                                 onPrimary: Colors.black,
-                                surface: Color.fromARGB(255, 52, 52, 54),
+                                surface: Colors.black,
                               ),
                             ),
                             child: child!,
@@ -94,7 +107,7 @@ class AddTaskDialog {
                               colorScheme: const ColorScheme.dark(
                                 primary: Colors.white,
                                 onPrimary: Colors.black,
-                                surface: Color.fromARGB(255, 52, 52, 54),
+                                surface: Colors.black,
                               ),
                             ),
                             child: child!,
@@ -136,10 +149,10 @@ class AddTaskDialog {
                 ),
               ),
               StyledButton(
-                label: 'Add!',
+                label: 'Update',
                 isGradient: true,
                 textColor: const Color(0xFF6366F1),
-                onPressed: () async {
+                onPressed: () {
                   // Validate required fields
                   final missingFields = <String>[];
                   
@@ -162,11 +175,10 @@ class AddTaskDialog {
                     return; // Stop execution
                   }
                   
-                  // All validations passed - create and add task
-                  final task = Task(
+                  // All validations passed - update task
+                  final updatedTask = task.copyWith(
                     title: titleController.text.trim(),
                     description: descriptionController.text.trim(),
-                    createdAt: DateTime.now(),
                     dueDate: selectedDueDate,
                     dueTime: selectedDueTime,
                     priority: selectedPriority,
@@ -174,7 +186,7 @@ class AddTaskDialog {
                         ? null
                         : assignedToController.text.trim(),
                   );
-                  await controller.addTask(task);
+                  controller.updateTask(updatedTask);
                   Navigator.pop(context);
                   Future.delayed(const Duration(milliseconds: 50), () {
                     titleController.dispose();

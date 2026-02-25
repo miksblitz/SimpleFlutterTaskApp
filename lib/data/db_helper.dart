@@ -22,8 +22,9 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'task_manager.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -34,30 +35,50 @@ class DatabaseHelper {
         title TEXT NOT NULL,
         description TEXT NOT NULL,
         status TEXT NOT NULL,
-        createdAt TEXT NOT NULL
+        createdAt TEXT NOT NULL,
+        dateCompleted TEXT
       )
     ''');
   }
 
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Version 1 → 2: Add dateCompleted column
+    if (oldVersion < 2) {
+      try {
+        await db.execute('ALTER TABLE tasks ADD COLUMN dateCompleted TEXT');
+      } catch (e) {
+        // Column already exists
+      }
+    }
+  }
+
   // CREATE - Insert a new task
   Future<int> insertTask(Task task) async {
+    await _ensureDateCompletedColumn();
     final db = await database;
-    print('📝 [DB] Inserting task: ${task.title}');
-    final id = await db.insert(
+    return await db.insert(
       'tasks',
       task.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    print('✅ [DB] Task inserted with ID: $id');
-    return id;
   }
 
   // READ - Get all tasks
   Future<List<Task>> getTasks() async {
+    await _ensureDateCompletedColumn();
     final db = await database;
     final maps = await db.query('tasks', orderBy: 'id DESC');
-    print('📖 [DB] Retrieved ${maps.length} tasks from database');
     return List.generate(maps.length, (i) => Task.fromMap(maps[i]));
+  }
+
+  // MIGRATION HELPER: Ensure dateCompleted column exists (fallback for existing DBs)
+  Future<void> _ensureDateCompletedColumn() async {
+    final db = await database;
+    try {
+      await db.execute('ALTER TABLE tasks ADD COLUMN dateCompleted TEXT');
+    } catch (e) {
+      // Column already exists - no action needed
+    }
   }
 
   // READ - Get task by id
@@ -69,38 +90,31 @@ class DatabaseHelper {
       whereArgs: [id],
     );
     if (maps.isNotEmpty) {
-      print('📖 [DB] Found task with ID: $id');
       return Task.fromMap(maps.first);
     }
-    print('⚠️ [DB] Task not found with ID: $id');
     return null;
   }
 
   // UPDATE - Update task
   Future<int> updateTask(Task task) async {
+    await _ensureDateCompletedColumn();
     final db = await database;
-    print('✏️ [DB] Updating task ID ${task.id}: ${task.title}');
-    final result = await db.update(
+    return await db.update(
       'tasks',
       task.toMap(),
       where: 'id = ?',
       whereArgs: [task.id],
     );
-    print('✅ [DB] Task updated: $result rows affected');
-    return result;
   }
 
   // DELETE - Delete task
   Future<int> deleteTask(int id) async {
     final db = await database;
-    print('🗑️ [DB] Deleting task with ID: $id');
-    final result = await db.delete(
+    return await db.delete(
       'tasks',
       where: 'id = ?',
       whereArgs: [id],
     );
-    print('✅ [DB] Task deleted: $result rows affected');
-    return result;
   }
 
   // DELETE - Delete all tasks
@@ -113,5 +127,10 @@ class DatabaseHelper {
   Future<void> closeDB() async {
     final db = await database;
     db.close();
+  }
+
+  // Get database file path
+  Future<String> getDatabasePath() async {
+    return join(await getDatabasesPath(), 'task_manager.db');
   }
 }
